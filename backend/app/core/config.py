@@ -46,4 +46,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Storage
+    STORAGE_DIR: str = "storage"
+    MAX_UPLOAD_SIZE_MB: int = 20
+    ALLOWED_EXTENSIONS: set[str] = {"pdf", "docx", "pptx", "xlsx", "txt"}
+
 settings = Settings()
