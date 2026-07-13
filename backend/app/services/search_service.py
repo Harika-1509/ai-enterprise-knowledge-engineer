@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.schemas.search import SearchResult
 from app.services.embedding.embedding_service import embedding_service
+from app.services.query.query_rewriter_service import query_rewriter_service
 from app.services.reranking.reranker_service import reranker_service
 from app.services.search.fusion import reciprocal_rank_fusion
 from app.services.vectorstore.qdrant_service import qdrant_service
@@ -15,19 +16,21 @@ logger = logging.getLogger(__name__)
 
 class SearchService:
     def search(self, query: str, limit: int, current_user: User) -> list[SearchResult]:
+        # Stage 0: Query rewriting - improve the query BEFORE it hits retrieval
+        search_query = query_rewriter_service.rewrite(query)
+
         access_filter = Filter(
             must=[FieldCondition(key="owner_id", match=MatchValue(value=str(current_user.id)))]
         )
 
-        # Stage 1: Retrieve a wider candidate pool cheaply (hybrid search)
         retrieval_limit = max(settings.RERANK_CANDIDATE_LIMIT, limit * 3)
 
-        dense_vector = embedding_service.embed_query(query)
+        dense_vector = embedding_service.embed_query(search_query)
         dense_results = qdrant_service.search_dense(
             query_vector=dense_vector, limit=retrieval_limit, query_filter=access_filter
         )
 
-        sparse_raw = embedding_service.embed_sparse_query(query)
+        sparse_raw = embedding_service.embed_sparse_query(search_query)
         sparse_vector = SparseVector(
             indices=sparse_raw.indices.tolist(), values=sparse_raw.values.tolist()
         )
@@ -41,24 +44,24 @@ class SearchService:
 
         points_by_id = {str(p.id): p for p in dense_results + sparse_results}
 
-        # Take a candidate pool (wider than final `limit`) forward to re-ranking
         candidate_ids = [point_id for point_id, _ in fused[: settings.RERANK_CANDIDATE_LIMIT]]
         candidates = [
             (point_id, points_by_id[point_id].payload) for point_id in candidate_ids
         ]
 
         logger.info(
-            f"Hybrid retrieval by user {current_user.id}: query='{query}' "
-            f"dense={len(dense_results)} sparse={len(sparse_results)} "
-            f"candidates_for_rerank={len(candidates)}"
+            f"Hybrid retrieval by user {current_user.id}: original_query='{query}' "
+            f"search_query='{search_query}' dense={len(dense_results)} "
+            f"sparse={len(sparse_results)} candidates_for_rerank={len(candidates)}"
         )
 
-        # Stage 2: Precisely re-rank the candidate pool (cross-encoder)
+        # Re-rank using the ORIGINAL query, not the rewritten one - the
+        # cross-encoder should judge relevance against what the user
+        # actually asked, while retrieval benefits from the clearer rewrite.
         reranked = reranker_service.rerank(query, candidates)
 
         logger.info(f"Re-ranked {len(reranked)} candidates for query='{query}'")
 
-        # Stage 3: Trim to final requested limit and format
         results = []
         for payload, score in reranked[:limit]:
             results.append(

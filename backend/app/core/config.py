@@ -62,4 +62,9 @@ class Settings(BaseSettings):
 
     RERANKER_MODEL_NAME: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     RERANK_CANDIDATE_LIMIT: int = 15
+
+    # Groq (used temporarily for query rewriting until Phase 6's
+    # multi-LLM abstraction is built)
+    GROQ_API_KEY: str
+    QUERY_REWRITER_MODEL: str = "llama-3.1-8b-instant"
 settings = Settings()
