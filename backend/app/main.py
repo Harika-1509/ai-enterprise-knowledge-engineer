@@ -1,16 +1,39 @@
+import os
+
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from fastapi.security import HTTPBearer
 
 from app.api.v1.router import api_router
 from app.core.config import settings
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
-import logging
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.services.embedding.embedding_service import embedding_service  # noqa: F401
+    logger.info("All startup models loaded.")
+
+    yield
+
+    logger.info("Application shutting down.")
+
 
 app = FastAPI(
     title=settings.APP_NAME,
     version="0.1.0",
     description="Enterprise AI knowledge platform with RAG and multi-agent orchestration.",
+    lifespan=lifespan,
 )
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
@@ -19,9 +42,3 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 @app.get("/")
 def root():
     return {"message": f"{settings.APP_NAME} API is running"}
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)

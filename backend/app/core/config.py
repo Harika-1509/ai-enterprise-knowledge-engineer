@@ -51,4 +51,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 20
     ALLOWED_EXTENSIONS: set[str] = {"pdf", "docx", "pptx", "xlsx", "txt"}
 
+    # Embeddings
+    EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
+    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_QUERY_INSTRUCTION: str = "Represent this sentence for searching relevant passages: "
+
 settings = Settings()
