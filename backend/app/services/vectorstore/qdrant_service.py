@@ -3,101 +3,78 @@ import logging
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
     Distance,
-    VectorParams,
-    PointStruct,
-    Filter,
     FieldCondition,
+    Filter,
     MatchValue,
+    PointStruct,
+    SparseVector,
+    SparseVectorParams,
+    VectorParams,
 )
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+DENSE_VECTOR_NAME = "dense"
+SPARSE_VECTOR_NAME = "sparse"
+
 
 class QdrantService:
-    """
-    Singleton service for interacting with Qdrant.
-    Handles collection creation, vector upserts,
-    semantic search, and document deletion.
-    """
-
     def __init__(self):
-        self.client = QdrantClient(
-            host=settings.QDRANT_HOST,
-            port=settings.QDRANT_PORT,
-        )
-
+        self.client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
         self.collection_name = settings.QDRANT_COLLECTION_NAME
-
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:
-        """
-        Creates the collection only if it doesn't already exist.
-        Safe to run every application startup.
-        """
-        collections = [
-            c.name
-            for c in self.client.get_collections().collections
-        ]
+        existing_collections = [c.name for c in self.client.get_collections().collections]
 
-        if self.collection_name in collections:
-            logger.info(
-                f"Qdrant collection '{self.collection_name}' already exists."
-            )
+        if self.collection_name in existing_collections:
+            logger.info(f"Qdrant collection '{self.collection_name}' already exists.")
             return
 
         self.client.create_collection(
             collection_name=self.collection_name,
-            vectors_config=VectorParams(
-                size=settings.EMBEDDING_DIMENSION,
-                distance=Distance.COSINE,
-            ),
+            vectors_config={
+                DENSE_VECTOR_NAME: VectorParams(
+                    size=settings.EMBEDDING_DIMENSION, distance=Distance.COSINE
+                )
+            },
+            sparse_vectors_config={SPARSE_VECTOR_NAME: SparseVectorParams()},
         )
-
         logger.info(
-            f"Created Qdrant collection '{self.collection_name}' "
-            f"(dimension={settings.EMBEDDING_DIMENSION}, distance=Cosine)"
+            f"Created Qdrant collection '{self.collection_name}' with named "
+            f"dense ('{DENSE_VECTOR_NAME}') and sparse ('{SPARSE_VECTOR_NAME}') vectors."
         )
 
     def upsert_points(self, points: list[PointStruct]) -> None:
-        """
-        Insert or update vector points.
-        """
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-        )
+        self.client.upsert(collection_name=self.collection_name, points=points)
 
-    def search(
-        self,
-        query_vector: list[float],
-        limit: int = 5,
-        query_filter: Filter | None = None,
-    ):
+    def search_dense(self, query_vector: list[float], limit: int = 10, query_filter: Filter | None = None):
         response = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
+            using=DENSE_VECTOR_NAME,
+            limit=limit,
+            query_filter=query_filter,
+        )
+        return response.points
+
+    def search_sparse(self, sparse_vector: SparseVector, limit: int = 10, query_filter: Filter | None = None):
+        response = self.client.query_points(
+            collection_name=self.collection_name,
+            query=sparse_vector,
+            using=SPARSE_VECTOR_NAME,
             limit=limit,
             query_filter=query_filter,
         )
         return response.points
 
     def delete_by_document_id(self, document_id: str) -> None:
-        """
-        Deletes every vector belonging to a document.
-        """
-
         self.client.delete(
             collection_name=self.collection_name,
             points_selector=Filter(
-                must=[
-                    FieldCondition(
-                        key="document_id",
-                        match=MatchValue(value=document_id),
-                    )
-                ]
+                must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
             ),
         )
 

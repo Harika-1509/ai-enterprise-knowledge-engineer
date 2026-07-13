@@ -1,5 +1,6 @@
 import logging
 
+from fastembed import SparseTextEmbedding
 from sentence_transformers import SentenceTransformer
 
 from app.core.config import settings
@@ -9,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingService:
     """
-    Wraps a locally-run sentence-transformers model. Loaded once as a
-    singleton (model loading takes a few seconds - we never want to
-    reload it per-request).
+    Wraps both a dense embedding model (semantic meaning) and a sparse
+    BM25-style model (exact keyword matching). Both are needed for
+    hybrid search - dense alone misses exact terms, sparse alone
+    misses paraphrases/synonyms.
     """
 
     def __init__(self):
@@ -19,35 +21,30 @@ class EmbeddingService:
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
         logger.info("Embedding model loaded successfully.")
 
+        logger.info(f"Loading sparse (BM25) model: {settings.SPARSE_MODEL_NAME} ...")
+        self.sparse_model = SparseTextEmbedding(model_name=settings.SPARSE_MODEL_NAME)
+        logger.info("Sparse model loaded successfully.")
+
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """
-        Embeds a batch of chunk texts for storage. No instruction prefix -
-        BGE models are trained asymmetrically: documents are embedded
-        plain, only queries get the instruction prefix.
-        """
         if not texts:
             return []
         embeddings = self.model.encode(
-            texts,
-            batch_size=32,
-            show_progress_bar=False,
-            normalize_embeddings=True,  # required for cosine similarity in Qdrant
+            texts, batch_size=32, show_progress_bar=False, normalize_embeddings=True
         )
         return embeddings.tolist()
 
     def embed_query(self, query: str) -> list[float]:
-        """
-        Embeds a single user query for search. Applies BGE's recommended
-        instruction prefix, which measurably improves retrieval quality
-        for this model family.
-        """
         prefixed = settings.EMBEDDING_QUERY_INSTRUCTION + query
-        embedding = self.model.encode(
-            prefixed,
-            normalize_embeddings=True,
-        )
+        embedding = self.model.encode(prefixed, normalize_embeddings=True)
         return embedding.tolist()
 
+    def embed_sparse_documents(self, texts: list[str]):
+        if not texts:
+            return []
+        return list(self.sparse_model.embed(texts))
 
-# Singleton - the model loads once when the app starts, not per-request.
+    def embed_sparse_query(self, query: str):
+        return list(self.sparse_model.embed([query]))[0]
+
+
 embedding_service = EmbeddingService()

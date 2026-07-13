@@ -58,4 +58,6 @@ class Settings(BaseSettings):
 
     QDRANT_COLLECTION_NAME: str = "documents"
 
+    SPARSE_MODEL_NAME: str = "Qdrant/bm25"
+
 settings = Settings()

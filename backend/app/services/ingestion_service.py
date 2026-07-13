@@ -2,7 +2,7 @@ import hashlib
 import logging
 from pathlib import Path
 
-from qdrant_client.http.models import PointStruct
+from qdrant_client.http.models import PointStruct, SparseVector
 from sqlalchemy.orm import Session
 
 from app.models.document import DocumentStatus
@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 def _deterministic_point_id(document_id: str, chunk_index: int) -> str:
     """
     Generates a stable, repeatable point ID from document_id + chunk_index.
-    Using a UUID5 (hash-based) instead of UUID4 (random) means re-processing
-    the same document produces the SAME point IDs, so re-ingestion cleanly
-    overwrites old vectors via upsert instead of creating duplicates.
+    Using a hash instead of a random UUID ensures re-processing the same
+    document overwrites existing vectors instead of creating duplicates.
     """
     namespace = hashlib.md5(document_id.encode()).hexdigest()
     seed = f"{namespace}-{chunk_index}"
@@ -29,9 +28,9 @@ def _deterministic_point_id(document_id: str, chunk_index: int) -> str:
 
 class IngestionService:
     """
-    Orchestrates the full ingestion pipeline: extraction -> chunking ->
-    embedding -> vector storage. This is the single place where all four
-    prior steps (8, 9, 14, 15) come together.
+    Orchestrates the ingestion pipeline:
+
+    Extraction → Chunking → Embedding → Vector Storage
     """
 
     def __init__(self, db: Session):
@@ -40,48 +39,68 @@ class IngestionService:
 
     def process_document(self, document_id: str) -> None:
         document = self.repo.get_by_id(document_id)
+
         if not document:
-            logger.error(f"Document {document_id} not found for processing.")
+            logger.error(f"Document {document_id} not found.")
             return
 
         document.status = DocumentStatus.PROCESSING
         self.db.commit()
 
         try:
-            # Stage 1: Extraction (Step 8)
+            # --------------------------------------------------
+            # Stage 1: Extract text
+            # --------------------------------------------------
             extractor = ExtractorFactory.get_extractor(document.file_type)
             extracted_chunks = extractor.extract(Path(document.storage_path))
 
             if not extracted_chunks:
-                raise ValueError("No extractable text found in document.")
+                raise ValueError("No extractable text found.")
 
             logger.info(
-                f"Extracted {len(extracted_chunks)} raw segments from "
-                f"document {document.id} ({document.filename})"
+                f"Extracted {len(extracted_chunks)} raw segments "
+                f"from document {document.id} ({document.filename})"
             )
 
-            # Stage 2: Chunking (Step 9)
+            # --------------------------------------------------
+            # Stage 2: Chunk text
+            # --------------------------------------------------
             all_text_chunks = []
+
             for extracted_chunk in extracted_chunks:
                 all_text_chunks.extend(text_chunker.split(extracted_chunk))
 
             if not all_text_chunks:
-                raise ValueError("Chunking produced no usable text chunks.")
+                raise ValueError("Chunking produced no usable text.")
 
             logger.info(
-                f"Chunked into {len(all_text_chunks)} final chunks for "
-                f"document {document.id}"
+                f"Chunked into {len(all_text_chunks)} chunks "
+                f"for document {document.id}"
             )
 
-            # Stage 3: Embedding (Step 14) - batched, not one-by-one
+            # --------------------------------------------------
+            # Stage 3: Generate embeddings
+            # --------------------------------------------------
             texts = [chunk.content for chunk in all_text_chunks]
-            vectors = embedding_service.embed_documents(texts)
 
-            logger.info(f"Embedded {len(vectors)} chunks for document {document.id}")
+            dense_vectors = embedding_service.embed_documents(texts)
+            sparse_vectors = embedding_service.embed_sparse_documents(texts)
 
-            # Stage 4: Build payloads and store in Qdrant (Step 15)
+            logger.info(
+                f"Generated dense and sparse embeddings for "
+                f"{len(dense_vectors)} chunks."
+            )
+
+            # --------------------------------------------------
+            # Stage 4: Store in Qdrant
+            # --------------------------------------------------
             points = []
-            for chunk, vector in zip(all_text_chunks, vectors):
+
+            for chunk, dense_vec, sparse_vec in zip(
+                all_text_chunks,
+                dense_vectors,
+                sparse_vectors,
+            ):
                 payload = {
                     "document_id": str(document.id),
                     "owner_id": str(document.owner_id),
@@ -90,25 +109,40 @@ class IngestionService:
                     "chunk_index": chunk.chunk_index,
                     "token_count": chunk.token_count,
                     "content": chunk.content,
-                    **chunk.metadata,  # page_number / slide_number / sheet_name / etc.
+                    **chunk.metadata,
                 }
-                points.append(
-                    PointStruct(
-                        id=_deterministic_point_id(str(document.id), chunk.chunk_index),
-                        vector=vector,
-                        payload=payload,
-                    )
+
+                point = PointStruct(
+                    id=_deterministic_point_id(
+                        str(document.id),
+                        chunk.chunk_index,
+                    ),
+                    vector={
+                        "dense": dense_vec,
+                        "sparse": SparseVector(
+                            indices=sparse_vec.indices.tolist(),
+                            values=sparse_vec.values.tolist(),
+                        ),
+                    },
+                    payload=payload,
                 )
 
+                points.append(point)
+
             qdrant_service.upsert_points(points)
+
             logger.info(
-                f"Stored {len(points)} vectors in Qdrant for document {document.id}"
+                f"Stored {len(points)} vectors in Qdrant "
+                f"for document {document.id}"
             )
 
             document.status = DocumentStatus.COMPLETED
             self.db.commit()
 
         except Exception as e:
-            logger.exception(f"Processing failed for document {document.id}: {e}")
+            logger.exception(
+                f"Processing failed for document {document.id}: {e}"
+            )
+
             document.status = DocumentStatus.FAILED
             self.db.commit()
