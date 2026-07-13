@@ -76,18 +76,12 @@ class QdrantService:
         limit: int = 5,
         query_filter: Filter | None = None,
     ):
-        """
-        Semantic vector search.
-        Compatible with qdrant-client >= 1.18.
-        """
-
         response = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
             limit=limit,
             query_filter=query_filter,
         )
-
         return response.points
 
     def delete_by_document_id(self, document_id: str) -> None:
