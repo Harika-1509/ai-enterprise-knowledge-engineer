@@ -60,4 +60,6 @@ class Settings(BaseSettings):
 
     SPARSE_MODEL_NAME: str = "Qdrant/bm25"
 
+    RERANKER_MODEL_NAME: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    RERANK_CANDIDATE_LIMIT: int = 15
 settings = Settings()
