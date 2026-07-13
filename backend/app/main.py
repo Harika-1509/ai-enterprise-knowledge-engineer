@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.services.embedding.embedding_service import embedding_service  # noqa: F401
-    logger.info("All startup models loaded.")
+    from app.services.vectorstore.qdrant_service import qdrant_service  # noqa: F401
+    logger.info("All startup models and services loaded.")
 
     yield
 

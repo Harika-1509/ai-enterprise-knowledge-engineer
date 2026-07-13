@@ -56,4 +56,6 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
     EMBEDDING_QUERY_INSTRUCTION: str = "Represent this sentence for searching relevant passages: "
 
+    QDRANT_COLLECTION_NAME: str = "documents"
+
 settings = Settings()
