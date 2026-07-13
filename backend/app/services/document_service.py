@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.storage import storage_service
 from app.models.document import FileType
 from app.repositories.document_repository import DocumentRepository
+from app.services.vectorstore.qdrant_service import qdrant_service
 
 
 class DocumentService:
@@ -30,12 +31,15 @@ class DocumentService:
         if not document:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
 
-        # Ownership check: only the uploader or an admin can delete
         if document.owner_id != owner_id and not is_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to delete this document.",
             )
+
+        # Clean up vectors FIRST, so we never orphan Qdrant data even if
+        # the Postgres delete below were to fail for some reason.
+        qdrant_service.delete_by_document_id(str(document.id))
 
         storage_service.get_full_path(document.storage_path).unlink(missing_ok=True)
         self.repo.delete(document)
