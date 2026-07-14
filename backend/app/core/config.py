@@ -69,6 +69,6 @@ class Settings(BaseSettings):
     QUERY_REWRITER_MODEL: str = "llama-3.1-8b-instant"
 
     # Context Compression
-    COMPRESSION_SIMILARITY_THRESHOLD: float = 0.35
+    COMPRESSION_SIMILARITY_THRESHOLD: float = 0.55
     MAX_CONTEXT_TOKENS: int = 2000
 settings = Settings()

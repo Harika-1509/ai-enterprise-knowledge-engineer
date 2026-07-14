@@ -1,8 +1,36 @@
+from app.services.compression.context_compressor import context_compressor
+from app.services.embedding.embedding_service import embedding_service
+import numpy as np
 from app.services.search_service import search_service
 from app.core.database import SessionLocal
 from app.repositories.user_repository import UserRepository
 
+
 db = SessionLocal()
+user = UserRepository(db).get_by_email("user@example.com")
+
+plain = search_service.search(
+    "OCR",
+    limit=5,
+    current_user=user,
+)
+sentences = context_compressor._split_sentences(plain[2].content)
+
+query_vec = np.array(
+    embedding_service.embed_query("OCR")
+)
+
+sent_vecs = np.array(
+    embedding_service.embed_documents(sentences)
+)
+
+sims = sent_vecs @ query_vec
+
+for s, sim in sorted(zip(sentences, sims), key=lambda x: -x[1]):
+    print(f"{sim:.3f}  {s[:70]}")
+
+
+
 user = UserRepository(db).get_by_email("user@example.com")
 
 plain = search_service.search("OCR", limit=5, current_user=user)
