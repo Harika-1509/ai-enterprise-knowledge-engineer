@@ -67,4 +67,8 @@ class Settings(BaseSettings):
     # multi-LLM abstraction is built)
     GROQ_API_KEY: str
     QUERY_REWRITER_MODEL: str = "llama-3.1-8b-instant"
+
+    # Context Compression
+    COMPRESSION_SIMILARITY_THRESHOLD: float = 0.35
+    MAX_CONTEXT_TOKENS: int = 2000
 settings = Settings()

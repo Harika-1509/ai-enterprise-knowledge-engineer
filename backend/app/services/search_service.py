@@ -80,6 +80,24 @@ class SearchService:
                 )
             )
         return results
+    
+
+    def search_for_llm_context(self, query: str, limit: int, current_user: User) -> list[SearchResult]:
+        """
+        Same retrieval/rerank pipeline as search(), but additionally
+        compresses chunk content for efficient LLM consumption. Used by
+        the future RAG answer-generation endpoint (Phase 6), not the
+        plain search endpoint - users browsing search results still see
+        full, uncompressed chunk text for readability.
+        """
+        from app.services.compression.context_compressor import context_compressor
+
+        results = self.search(query, limit, current_user)
+
+        results_as_dicts = [r.model_dump() for r in results]
+        compressed_dicts = context_compressor.compress_results(query, results_as_dicts)
+
+        return [SearchResult(**d) for d in compressed_dicts]
 
 
 search_service = SearchService()
