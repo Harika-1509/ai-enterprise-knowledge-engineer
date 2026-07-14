@@ -71,4 +71,9 @@ class Settings(BaseSettings):
     # Context Compression
     COMPRESSION_SIMILARITY_THRESHOLD: float = 0.55
     MAX_CONTEXT_TOKENS: int = 2000
+
+    # Answer Generation (temporary direct Groq usage, formalized in Phase 6)
+    ANSWER_MODEL: str = "llama-3.3-70b-versatile"
+    ANSWER_TEMPERATURE: float = 0.1
+    ANSWER_MAX_TOKENS: int = 800
 settings = Settings()
