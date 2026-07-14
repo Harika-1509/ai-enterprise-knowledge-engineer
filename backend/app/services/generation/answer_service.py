@@ -5,6 +5,7 @@ from groq import Groq
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.answer import AskResponse
+from app.services.generation.citation_parser import parse_citations
 from app.services.generation.prompt_builder import build_messages
 from app.services.search_service import search_service
 
@@ -12,16 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class AnswerService:
-    """
-    Orchestrates the final RAG answer-generation step: retrieve +
-    compress context (reusing SearchService), build a grounded prompt,
-    call the LLM, and return the answer alongside its sources.
-
-    NOTE: Direct Groq usage here is temporary/provisional - Phase 6
-    will introduce a proper multi-LLM provider abstraction, and this
-    service will be refactored to use it instead of calling Groq directly.
-    """
-
     def __init__(self):
         self.client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -48,12 +39,14 @@ class AnswerService:
                 "Please try again shortly."
             )
 
+        citations = parse_citations(answer, sources)
+
         logger.info(
             f"Answer generated for user {current_user.id}: query='{query}' "
-            f"sources_used={len(sources)}"
+            f"sources_used={len(sources)} citations_parsed={len(citations)}"
         )
 
-        return AskResponse(query=query, answer=answer, sources=sources)
+        return AskResponse(query=query, answer=answer, citations=citations, sources=sources)
 
 
 answer_service = AnswerService()
