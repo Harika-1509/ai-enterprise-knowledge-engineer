@@ -1,8 +1,7 @@
 import logging
 
-from groq import Groq
-
 from app.core.config import settings
+from app.services.llm.llm_factory import LLMProviderFactory
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +21,10 @@ Rules:
 
 
 class QueryRewriterService:
-    """
-    Uses a small, fast LLM (Groq) to rewrite vague or poorly-phrased
-    queries before they hit the retrieval pipeline. This is a temporary,
-    single-provider implementation - Phase 6 will refactor this to use
-    our multi-LLM abstraction layer instead of calling Groq directly.
-    """
-
     def __init__(self):
-        self.client = Groq(api_key=settings.GROQ_API_KEY)
+        # Uses a small, fast model regardless of provider - query rewriting
+        # is a lightweight mechanical task, not one requiring a large model.
+        self.provider = LLMProviderFactory.get_provider(model=settings.QUERY_REWRITER_MODEL)
 
     def rewrite(self, query: str) -> str:
         query = query.strip()
@@ -38,38 +32,27 @@ class QueryRewriterService:
             return query
 
         try:
-            response = self.client.chat.completions.create(
-                model=settings.QUERY_REWRITER_MODEL,
+            rewritten = self.provider.generate(
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {"role": "user", "content": query},
                 ],
-                temperature=0.0,  # deterministic - we want consistent rewrites, not creativity
+                temperature=0.0,
                 max_tokens=150,
             )
-            rewritten = response.choices[0].message.content.strip()
 
             if self._is_safe_rewrite(query, rewritten):
                 logger.info(f"Query rewritten: '{query}' -> '{rewritten}'")
                 return rewritten
 
-            logger.warning(
-                f"Rewrite for '{query}' failed safety check, falling back to original."
-            )
+            logger.warning(f"Rewrite for '{query}' failed safety check, falling back to original.")
             return query
 
         except Exception as e:
-            # Query rewriting is an enhancement, not a hard dependency -
-            # if it fails for any reason, we must not break search entirely.
             logger.exception(f"Query rewriting failed, falling back to original query: {e}")
             return query
 
     def _is_safe_rewrite(self, original: str, rewritten: str) -> bool:
-        """
-        Basic guardrail: reject rewrites that are empty, suspiciously long
-        (possible hallucinated tangent), or suspiciously short (possible
-        truncation/error).
-        """
         if not rewritten:
             return False
         if len(rewritten) > len(original) * 4 + 50:
