@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     ANSWER_MAX_TOKENS: int = 800
 
    # LLM Provider Selection (config-driven, no code changes needed to switch)
-    DEFAULT_LLM_PROVIDER: str = "ollama"  # groq | gemini | ollama | claude | openai | azure_openai
+    DEFAULT_LLM_PROVIDER: str = "groq"  # groq | gemini | ollama | claude | openai | azure_openai
 
     # Provider credentials / settings
     GEMINI_API_KEY: str = ""

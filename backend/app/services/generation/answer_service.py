@@ -4,7 +4,9 @@ from typing import Iterator
 
 from app.core.config import settings
 from app.models.user import User
+from app.schemas.answer import AskResponse
 from app.services.generation.citation_parser import parse_citations
+from app.services.generation.confidence_service import confidence_service
 from app.services.generation.prompt_builder import build_messages
 from app.services.llm.llm_factory import LLMProviderFactory
 from app.services.search_service import search_service
@@ -16,10 +18,7 @@ class AnswerService:
     def __init__(self):
         self.provider = LLMProviderFactory.get_provider(task="quality")
 
-    def ask(self, query: str, limit: int, current_user: User):
-        # ... unchanged from Step 25 (non-streaming path stays available) ...
-        from app.schemas.answer import AskResponse
-
+    def ask(self, query: str, limit: int, current_user: User) -> AskResponse:
         sources = search_service.search_for_llm_context(query=query, limit=limit, current_user=current_user)
         messages = build_messages(query, sources)
 
@@ -32,7 +31,22 @@ class AnswerService:
             answer = "I'm unable to generate an answer right now due to a technical issue. Please try again shortly."
 
         citations = parse_citations(answer, sources)
-        return AskResponse(query=query, answer=answer, citations=citations, sources=sources)
+        confidence = confidence_service.assess(answer, sources, citations)
+
+        logger.info(
+            f"Answer generated for user {current_user.id}: query='{query}' "
+            f"citations={len(citations)} confidence={confidence.level.value}"
+        )
+
+        return AskResponse(
+            query=query, answer=answer, citations=citations, sources=sources, confidence=confidence
+        )
+
+    # ask_stream from Step 26 unchanged for now - confidence scoring for
+    # the streaming path is a reasonable future enhancement (would need
+    # its own final SSE event), noted honestly rather than built now to
+    # avoid scope creep on this already-multi-part step.
+
 
     def ask_stream(self, query: str, limit: int, current_user: User) -> Iterator[str]:
         """

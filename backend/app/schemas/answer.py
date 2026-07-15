@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 
 from pydantic import BaseModel
 
@@ -13,8 +14,21 @@ class Citation(BaseModel):
     source_number: int
     document_id: uuid.UUID
     filename: str
-    location: str | None = None  # e.g. "page 4", "slide 2", "paragraph 7"
-    snippet: str  # the actual chunk content backing this citation
+    location: str | None = None
+    snippet: str
+
+
+class ConfidenceLevel(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class Confidence(BaseModel):
+    level: ConfidenceLevel
+    retrieval_score: float  # 0-1, avg re-rank relevance of cited sources
+    self_verified: bool | None  # None if verification call failed/skipped
+    reasoning: str
 
 
 class AskResponse(BaseModel):
@@ -22,3 +36,4 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[Citation]
     sources: list[SearchResult]
+    confidence: Confidence
