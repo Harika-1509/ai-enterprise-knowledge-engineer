@@ -1,22 +1,21 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 
 
 class BaseLLMProvider(ABC):
-    """
-    Strategy interface every LLM provider implements. Deliberately
-    minimal - the common denominator across chat-completion APIs:
-    a list of role-tagged messages in, generated text out.
-    """
-
     @abstractmethod
     def generate(
-        self,
-        messages: list[dict],
-        temperature: float = 0.1,
-        max_tokens: int = 800,
+        self, messages: list[dict], temperature: float = 0.1, max_tokens: int = 800
     ) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def generate_stream(
+        self, messages: list[dict], temperature: float = 0.1, max_tokens: int = 800
+    ) -> Iterator[str]:
         """
-        messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
-        Returns the generated text content.
+        Yields text chunks (token fragments) as they're generated.
+        Every provider must support this - it's part of the core
+        contract now, not an optional extra.
         """
         raise NotImplementedError
