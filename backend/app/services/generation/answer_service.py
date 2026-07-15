@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 class AnswerService:
     def __init__(self):
-        self.provider = LLMProviderFactory.get_provider(model=settings.ANSWER_MODEL)
+        # self.provider = LLMProviderFactory.get_provider(model=settings.ANSWER_MODEL)
+        self.provider = LLMProviderFactory.get_provider(task="quality")
 
     def ask(self, query: str, limit: int, current_user: User) -> AskResponse:
         sources = search_service.search_for_llm_context(

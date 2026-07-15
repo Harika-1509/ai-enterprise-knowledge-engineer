@@ -16,21 +16,35 @@ _PROVIDER_REGISTRY: dict[str, type[BaseLLMProvider]] = {
     "azure_openai": AzureOpenAIProvider,
 }
 
+# Maps (provider_name, task) -> the correct model name for THAT provider.
+# This is what prevents a Groq model name from ever being sent to Gemini.
+_TASK_MODEL_MAP: dict[str, dict[str, str]] = {
+    "groq": {"fast": settings.GROQ_FAST_MODEL, "quality": settings.GROQ_QUALITY_MODEL},
+    "gemini": {"fast": settings.GEMINI_FAST_MODEL, "quality": settings.GEMINI_QUALITY_MODEL},
+    "ollama": {"fast": settings.OLLAMA_FAST_MODEL, "quality": settings.OLLAMA_QUALITY_MODEL},
+    "claude": {"fast": settings.ANTHROPIC_FAST_MODEL, "quality": settings.ANTHROPIC_QUALITY_MODEL},
+    "openai": {"fast": settings.OPENAI_FAST_MODEL, "quality": settings.OPENAI_QUALITY_MODEL},
+    "azure_openai": {"fast": settings.AZURE_OPENAI_DEPLOYMENT, "quality": settings.AZURE_OPENAI_DEPLOYMENT},
+}
+
 
 class LLMProviderFactory:
-    """
-    Factory Pattern (same as Step 8's ExtractorFactory): hides provider
-    instantiation details from callers, who just ask for "the configured
-    provider" or a specific named one, without knowing which SDK or
-    credentials are involved.
-    """
-
     @classmethod
-    def get_provider(cls, provider_name: str | None = None, model: str | None = None) -> BaseLLMProvider:
+    def get_provider(
+        cls, provider_name: str | None = None, task: str = "quality"
+    ) -> BaseLLMProvider:
+        """
+        task: "fast" (lightweight, e.g. query rewriting) or "quality"
+        (answer generation). The factory resolves this to the CORRECT
+        model name for whichever provider is configured - callers never
+        need to know or specify a provider-specific model name.
+        """
         name = (provider_name or settings.DEFAULT_LLM_PROVIDER).lower()
         provider_class = _PROVIDER_REGISTRY.get(name)
         if provider_class is None:
             raise ValueError(
                 f"Unknown LLM provider '{name}'. Available: {list(_PROVIDER_REGISTRY.keys())}"
             )
+
+        model = _TASK_MODEL_MAP.get(name, {}).get(task)
         return provider_class(model=model)

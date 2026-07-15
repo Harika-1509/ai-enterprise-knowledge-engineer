@@ -77,8 +77,8 @@ class Settings(BaseSettings):
     ANSWER_TEMPERATURE: float = 0.1
     ANSWER_MAX_TOKENS: int = 800
 
-    # LLM Provider Selection (config-driven, no code changes needed to switch)
-    DEFAULT_LLM_PROVIDER: str = "groq"  # groq | gemini | ollama | claude | openai | azure_openai
+   # LLM Provider Selection (config-driven, no code changes needed to switch)
+    DEFAULT_LLM_PROVIDER: str = "ollama"  # groq | gemini | ollama | claude | openai | azure_openai
 
     # Provider credentials / settings
     GEMINI_API_KEY: str = ""
@@ -97,4 +97,22 @@ class Settings(BaseSettings):
     AZURE_OPENAI_ENDPOINT: str = ""
     AZURE_OPENAI_DEPLOYMENT: str = ""
     AZURE_OPENAI_API_VERSION: str = "2024-08-01-preview"
+
+   # Task-oriented model selection: which model each provider should use
+    # for "fast/cheap" tasks (query rewriting) vs "quality" tasks (answer
+    # generation). Avoids ever passing one provider's model name to another.
+    GROQ_FAST_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_QUALITY_MODEL: str = "llama-3.3-70b-versatile"
+
+    GEMINI_FAST_MODEL: str = "gemini-1.5-flash"
+    GEMINI_QUALITY_MODEL: str = "gemini-1.5-pro"
+
+    OLLAMA_FAST_MODEL: str = "llama3.1:8b"
+    OLLAMA_QUALITY_MODEL: str = "llama3.1:8b"  # same model, Ollama has no separate "fast" tier locally
+
+    ANTHROPIC_FAST_MODEL: str = "claude-3-5-haiku-latest"
+    ANTHROPIC_QUALITY_MODEL: str = "claude-3-5-sonnet-latest"
+
+    OPENAI_FAST_MODEL: str = "gpt-4o-mini"
+    OPENAI_QUALITY_MODEL: str = "gpt-4o"
 settings = Settings()

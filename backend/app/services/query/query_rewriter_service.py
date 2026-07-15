@@ -24,7 +24,8 @@ class QueryRewriterService:
     def __init__(self):
         # Uses a small, fast model regardless of provider - query rewriting
         # is a lightweight mechanical task, not one requiring a large model.
-        self.provider = LLMProviderFactory.get_provider(model=settings.QUERY_REWRITER_MODEL)
+        # self.provider = LLMProviderFactory.get_provider(model=settings.QUERY_REWRITER_MODEL)
+        self.provider = LLMProviderFactory.get_provider(task="fast")
 
     def rewrite(self, query: str) -> str:
         query = query.strip()
