@@ -20,33 +20,82 @@ class DOCXExtractor(BaseExtractor):
                     )
                 )
 
-        # Tables - pair header row with each subsequent row so chunks are
-        # self-describing (mirrors XLSXExtractor's approach from Step 8).
         for t_idx, table in enumerate(doc.tables):
-            rows = table.rows
-            if not rows:
+            chunks.extend(self._extract_table(table, t_idx))
+
+        return chunks
+
+    def _extract_table(self, table, t_idx: int) -> list[ExtractedChunk]:
+        rows = table.rows
+        if not rows:
+            return []
+
+        header = [cell.text.strip() for cell in rows[0].cells]
+        non_empty_header_cells = [h for h in header if h]
+
+        # A real multi-column header has more than one meaningful column
+        # name (e.g. "Model", "Accuracy"). If only column 0 has text,
+        # this is actually a key-value FORM table (label in col 0,
+        # value(s) in remaining columns) - a different shape entirely,
+        # common in offer letters, forms, and spec sheets.
+        is_form_table = len(non_empty_header_cells) <= 1
+
+        if is_form_table:
+            return self._extract_form_table(rows, t_idx)
+        return self._extract_record_table(rows, header, t_idx)
+
+    def _extract_form_table(self, rows, t_idx: int) -> list[ExtractedChunk]:
+        chunks = []
+        for r_idx, row in enumerate(rows):
+            cells = [cell.text.strip() for cell in row.cells]
+            if not cells or not cells[0]:
                 continue
 
-            header = [cell.text.strip() for cell in rows[0].cells]
+            label = cells[0]
+            # Remaining columns often duplicate the same value across
+            # cells (as seen in this document) - dedupe while preserving
+            # order, and drop any value identical to the label itself.
+            seen = set()
+            values = []
+            for v in cells[1:]:
+                if v and v != label and v not in seen:
+                    values.append(v)
+                    seen.add(v)
 
-            for r_idx, row in enumerate(rows[1:], start=1):
-                values = [cell.text.strip() for cell in row.cells]
-                pairs = [(h, v) for h, v in zip(header, values) if h and v]
-                if not pairs:
-                    continue
-                # Verbalize as a natural sentence instead of pipe-delimited
-                # fields - embedding/reranking models are trained on prose
-                # and score natural language far more reliably than
-                # "Key: Value | Key: Value" formatting.
-                row_text = ", ".join(f"{h} is {v}" for h, v in pairs) + "."
-                chunks.append(
-                    ExtractedChunk(
-                        content=row_text,
-                        metadata={
-                            "table_index": t_idx,
-                            "row_index": r_idx,
-                            "source_type": "docx_table",
-                        },
-                    )
+            if not values:
+                continue  # header/section rows with no actual value
+
+            value_text = "; ".join(values)
+            content = f"{label}: {value_text}."
+
+            chunks.append(
+                ExtractedChunk(
+                    content=content,
+                    metadata={
+                        "table_index": t_idx,
+                        "row_index": r_idx,
+                        "source_type": "docx_form_table",
+                    },
                 )
+            )
+        return chunks
+
+    def _extract_record_table(self, rows, header: list[str], t_idx: int) -> list[ExtractedChunk]:
+        chunks = []
+        for r_idx, row in enumerate(rows[1:], start=1):
+            values = [cell.text.strip() for cell in row.cells]
+            pairs = [(h, v) for h, v in zip(header, values) if h and v]
+            if not pairs:
+                continue
+            row_text = ", ".join(f"{h} is {v}" for h, v in pairs) + "."
+            chunks.append(
+                ExtractedChunk(
+                    content=row_text,
+                    metadata={
+                        "table_index": t_idx,
+                        "row_index": r_idx,
+                        "source_type": "docx_table",
+                    },
+                )
+            )
         return chunks
