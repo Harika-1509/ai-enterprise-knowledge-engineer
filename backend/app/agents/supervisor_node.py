@@ -8,14 +8,18 @@ logger = logging.getLogger(__name__)
 _SUPERVISOR_PROMPT = """You are a routing classifier for an enterprise knowledge assistant.
 
 Classify the user's request into EXACTLY ONE of these intents:
-- "qa": a question that should be answered using retrieved document content (the default for most questions)
+- "qa": a single, focused question answerable from retrieved document content \
+directly (this is the default for most straightforward questions)
+- "complex_qa": a multi-part question, an explicit comparison, or a request that \
+combines several distinct pieces of information (e.g. "compare X and Y", \
+"list all A, B, and C", "what are the differences between...")
 - "summarize": a request to summarize a document or set of documents
 - "document_search": a request to simply find/list documents, not answer a question
-- "unknown": doesn't fit any category above, or is unclear
+- "unknown": doesn't fit any category above, or is genuinely unclear
 
 Respond with ONLY the intent label, nothing else."""
 
-_VALID_INTENTS = {"qa", "summarize", "document_search", "unknown"}
+_VALID_INTENTS = {"qa", "complex_qa", "summarize", "document_search", "unknown"}
 
 
 def supervisor_node(state: AgentState) -> AgentState:
