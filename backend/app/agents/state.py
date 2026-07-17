@@ -2,16 +2,10 @@ from typing import TypedDict
 from uuid import UUID
 
 from app.schemas.answer import AskResponse
+from app.schemas.search import SearchResult
 
 
 class AgentState(TypedDict, total=False):
-    """
-    Shared state passed between every graph node. Extended in this step
-    to carry sub-question/sub-answer data through the planner's internal
-    stages, while remaining fully backward-compatible with rag_node's
-    simpler usage from Step 28 (total=False means these new fields are
-    just absent, not erroring, for non-planner paths).
-    """
     query: str
     user_id: UUID
     limit: int
@@ -19,8 +13,13 @@ class AgentState(TypedDict, total=False):
     intent: str
     intent_reasoning: str
 
+    # Planner (Step 29)
     sub_questions: list[str]
     sub_answers: list[AskResponse]
+
+    # Research (this step)
+    research_angles: list[str]
+    research_evidence: list[SearchResult]
 
     result: AskResponse | None
     error: str | None

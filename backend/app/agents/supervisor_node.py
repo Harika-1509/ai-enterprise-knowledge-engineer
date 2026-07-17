@@ -8,26 +8,28 @@ logger = logging.getLogger(__name__)
 _SUPERVISOR_PROMPT = """You are a routing classifier for an enterprise knowledge assistant.
 
 Classify the user's request into EXACTLY ONE of these intents:
-- "qa": a single, focused question answerable from retrieved document content \
-directly (this is the default for most straightforward questions)
-- "complex_qa": a multi-part question, an explicit comparison, or a request that \
-combines several distinct pieces of information (e.g. "compare X and Y", \
-"list all A, B, and C", "what are the differences between...")
-- "summarize": a request to summarize a document or set of documents
+- "qa": a single, focused question with one specific, known answer
+- "complex_qa": a multi-part question or explicit comparison with distinct, \
+independently-answerable sub-parts (e.g. "compare X and Y", "what are the \
+differences between...")
+- "research": an open-ended, broad request for a comprehensive overview or \
+briefing on a topic, where the specific sub-topics are NOT explicitly listed \
+by the user (e.g. "tell me everything about X", "give me an overview of Y", \
+"summarize what we know about Z")
+- "summarize": a request to summarize a specific document or set of documents
 - "document_search": a request to simply find/list documents, not answer a question
 - "unknown": doesn't fit any category above, or is genuinely unclear
 
+Key distinction between "complex_qa" and "research": complex_qa has EXPLICIT, \
+named parts to compare or combine. research is OPEN-ENDED with no explicit \
+sub-parts named - the assistant must determine what angles to investigate.
+
 Respond with ONLY the intent label, nothing else."""
 
-_VALID_INTENTS = {"qa", "complex_qa", "summarize", "document_search", "unknown"}
+_VALID_INTENTS = {"qa", "complex_qa", "research", "summarize", "document_search", "unknown"}
 
 
 def supervisor_node(state: AgentState) -> AgentState:
-    """
-    Classifies the incoming query's intent, deciding which specialized
-    node should handle it next. Uses the fast/cheap model tier - this
-    is a narrow classification task, not open-ended generation.
-    """
     provider = LLMProviderFactory.get_provider(task="fast")
 
     try:
