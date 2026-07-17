@@ -65,10 +65,19 @@ class IngestionService:
             # --------------------------------------------------
             # Stage 2: Chunk text
             # --------------------------------------------------
+            
             all_text_chunks = []
-
             for extracted_chunk in extracted_chunks:
                 all_text_chunks.extend(text_chunker.split(extracted_chunk))
+
+            # Re-index chunk_index globally across the ENTIRE document,
+            # not per extracted segment. TextChunker.split() resets its
+            # own index to 0 for every call, which caused point ID
+            # collisions in Qdrant when many short segments (e.g. table
+            # rows) each produced exactly one chunk - every row silently
+            # overwrote the previous one at storage time.
+            for global_idx, chunk in enumerate(all_text_chunks):
+                chunk.chunk_index = global_idx
 
             if not all_text_chunks:
                 raise ValueError("Chunking produced no usable text.")
