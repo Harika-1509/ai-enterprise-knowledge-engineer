@@ -1,19 +1,21 @@
 import logging
 
 from app.agents.state import AgentState
-from app.services.generation.answer_service import answer_service
-from app.repositories.user_repository import UserRepository
 from app.core.database import SessionLocal
+from app.repositories.user_repository import UserRepository
+from app.services.generation.answer_service import answer_service
 
 logger = logging.getLogger(__name__)
 
 
 def rag_node(state: AgentState) -> AgentState:
     """
-    Wraps the existing Phase 5/6 RAG pipeline (answer_service) as a
-    graph node. This is deliberately a thin wrapper - all the real
-    logic (retrieval, reranking, compression, generation, citations,
-    confidence) already exists and is reused as-is, not reimplemented.
+    Wraps the existing Phase 5/6 RAG pipeline. Content-level security
+    scanning (Step 33) happens INSIDE answer_service.ask() itself now
+    (see answer_service.py changes below) so every consumer of that
+    method - direct QA, Planner's per-sub-question calls, Research's
+    synthesis - automatically benefits from the same scanning, rather
+    than each agent needing to remember to call the scanner separately.
     """
     db = SessionLocal()
     try:

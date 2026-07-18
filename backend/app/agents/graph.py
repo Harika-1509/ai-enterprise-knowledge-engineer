@@ -6,6 +6,7 @@ from app.agents.document_node import document_node
 from app.agents.planner_node import planner_node
 from app.agents.rag_node import rag_node
 from app.agents.research_node import research_node
+from app.agents.security_node import security_node_precheck
 from app.agents.state import AgentState
 from app.agents.supervisor_node import supervisor_node
 
@@ -20,20 +21,21 @@ def route_after_supervisor(state: AgentState) -> str:
         return "research"
     if intent in ("summarize", "document_search"):
         return "document"
-    # TODO (Step 33): route to a dedicated Security Agent once built
     return "rag_pipeline"
 
 
 def build_agent_graph():
     graph = StateGraph(AgentState)
 
+    graph.add_node("security_precheck", security_node_precheck)
     graph.add_node("supervisor", supervisor_node)
     graph.add_node("rag_pipeline", rag_node)
     graph.add_node("planner", planner_node)
     graph.add_node("research", research_node)
     graph.add_node("document", document_node)
 
-    graph.set_entry_point("supervisor")
+    graph.set_entry_point("security_precheck")
+    graph.add_edge("security_precheck", "supervisor")
     graph.add_conditional_edges(
         "supervisor",
         route_after_supervisor,
@@ -51,7 +53,7 @@ def build_agent_graph():
 
     compiled = graph.compile()
     logger.info(
-        "Agent graph compiled: supervisor -> "
+        "Agent graph compiled: security_precheck -> supervisor -> "
         "{rag_pipeline | planner | research | document} -> END"
     )
     return compiled

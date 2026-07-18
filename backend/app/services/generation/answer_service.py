@@ -10,6 +10,7 @@ from app.services.generation.confidence_service import confidence_service
 from app.services.generation.prompt_builder import build_messages
 from app.services.llm.llm_factory import LLMProviderFactory
 from app.services.search_service import search_service
+from app.services.security.security_scanner import security_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,22 @@ class AnswerService:
         self.provider = LLMProviderFactory.get_provider(task="quality")
 
     def ask(self, query: str, limit: int, current_user: User) -> AskResponse:
-        sources = search_service.search_for_llm_context(query=query, limit=limit, current_user=current_user)
-        messages = build_messages(query, sources)
+        sources = search_service.search_for_llm_context(
+            query=query, limit=limit, current_user=current_user
+        )
+
+        # Security scan BEFORE building the prompt - any chunk matching
+        # an injection pattern is excluded here, never reaching the LLM.
+        safe_sources, security_flags = security_scanner.scan_chunks(sources)
+
+        if security_flags:
+            logger.warning(
+                f"Security scan for query='{query}': {len(security_flags)} chunk(s) "
+                f"flagged ({sum(1 for f in security_flags if f.get('has_injection_risk'))} "
+                f"injection, excluded from prompt)"
+            )
+
+        messages = build_messages(query, safe_sources)
 
         try:
             answer = self.provider.generate(
@@ -30,16 +45,11 @@ class AnswerService:
             logger.exception(f"Answer generation failed for query='{query}': {e}")
             answer = "I'm unable to generate an answer right now due to a technical issue. Please try again shortly."
 
-        citations = parse_citations(answer, sources)
-        confidence = confidence_service.assess(answer, sources, citations)
-
-        logger.info(
-            f"Answer generated for user {current_user.id}: query='{query}' "
-            f"citations={len(citations)} confidence={confidence.level.value}"
-        )
+        citations = parse_citations(answer, safe_sources)
+        confidence = confidence_service.assess(answer, safe_sources, citations)
 
         return AskResponse(
-            query=query, answer=answer, citations=citations, sources=sources, confidence=confidence
+            query=query, answer=answer, citations=citations, sources=safe_sources, confidence=confidence
         )
 
     # ask_stream from Step 26 unchanged for now - confidence scoring for
