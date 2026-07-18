@@ -115,4 +115,9 @@ class Settings(BaseSettings):
 
     OPENAI_FAST_MODEL: str = "gpt-4o-mini"
     OPENAI_QUALITY_MODEL: str = "gpt-4o"
+
+    # Workflow Automation (n8n)
+    N8N_WEBHOOK_BASE_URL: str = "http://localhost:5678"
+    N8N_DOCUMENT_INGESTED_WEBHOOK_PATH: str = "/webhook/document-ingested"
+    WEBHOOK_TIMEOUT_SECONDS: float = 5.0
 settings = Settings()

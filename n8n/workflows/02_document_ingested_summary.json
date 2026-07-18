@@ -1,0 +1,74 @@
+{
+  "name": "Document Ingestion Auto Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-ingested",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -336,
+        -80
+      ],
+      "id": "d411bdb1-01ac-471a-bf0e-97fbda555294",
+      "name": "Webhook",
+      "webhookId": "28d3f5b9-6b6a-46af-872c-8c663f26696c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/agent/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"Summarize {{$json.body.filename}} for me\",\n  \"limit\": 5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -128,
+        -80
+      ],
+      "id": "1a12bbcc-bba0-4981-a9bb-6a994af48bf4",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "BgZwhOw0fGHOSUiZ",
+          "name": "AKE API Auth"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "af36cd1d-ab0e-47d8-a7db-7cfde4a3c21e",
+  "meta": {
+    "instanceId": "a8b62aff0b6aa4506952805e4bb3b5b1d2614fbd98e04bc755e50f930eab7b5b"
+  },
+  "nodeGroups": [],
+  "id": "zXT6L6uUnVYzkJCF",
+  "tags": []
+}

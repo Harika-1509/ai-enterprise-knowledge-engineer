@@ -11,6 +11,7 @@ from app.services.chunking.text_chunker import text_chunker
 from app.services.embedding.embedding_service import embedding_service
 from app.services.extraction.extractor_factory import ExtractorFactory
 from app.services.vectorstore.qdrant_service import qdrant_service
+from app.services.automation.webhook_notifier import webhook_notifier
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,15 @@ class IngestionService:
 
             document.status = DocumentStatus.COMPLETED
             self.db.commit()
+
+            # Fire webhook notification (Step 36) - fire-and-forget.
+            # Even if n8n is down, document ingestion is already complete.
+            webhook_notifier.notify_document_ingested(
+                document_id=str(document.id),
+                filename=document.filename,
+                owner_id=str(document.owner_id),
+                chunk_count=len(points),
+            )
 
         except Exception as e:
             logger.exception(
