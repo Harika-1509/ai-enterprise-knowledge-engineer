@@ -1,0 +1,68 @@
+{
+  "name": "AKE - Manual Agent API Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "021984ce-f582-442b-a397-9f0247ec1d17",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/agent/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"Compare stipend and bond duration\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5e12d4e2-1aa9-4554-8be1-6a27a14953d0",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "BgZwhOw0fGHOSUiZ",
+          "name": "Bearer Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "61e5f6ed-f399-4cb3-989c-58bae6aac7eb",
+  "meta": {
+    "instanceId": "a8b62aff0b6aa4506952805e4bb3b5b1d2614fbd98e04bc755e50f930eab7b5b"
+  },
+  "nodeGroups": [],
+  "id": "qMxXezkshtIYFTwK",
+  "tags": []
+}
