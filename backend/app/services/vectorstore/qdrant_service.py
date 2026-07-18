@@ -77,6 +77,26 @@ class QdrantService:
                 must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
             ),
         )
+    
+    def get_all_chunks_for_document(self, document_id: str) -> list[dict]:
+        """
+        Retrieves EVERY chunk belonging to one document, ordered by
+        chunk_index. This is a filter+scroll operation, NOT a similarity
+        search - there's no query to rank against, since the goal is
+        "give me the whole document," not "give me the most relevant parts."
+        """
+        points, _ = self.client.scroll(
+            collection_name=self.collection_name,
+            scroll_filter=Filter(
+                must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+            ),
+            limit=1000,  # generous ceiling - a single document is very
+            # unlikely to exceed 1000 chunks; if it did, this would need
+            # proper pagination, flagged honestly as a scale limit
+        )
+        payloads = [p.payload for p in points]
+        payloads.sort(key=lambda p: p.get("chunk_index", 0))
+        return payloads
 
 
 qdrant_service = QdrantService()
