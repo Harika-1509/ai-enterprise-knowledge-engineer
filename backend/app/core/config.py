@@ -120,4 +120,5 @@ class Settings(BaseSettings):
     N8N_WEBHOOK_BASE_URL: str = "http://localhost:5678"
     N8N_DOCUMENT_INGESTED_WEBHOOK_PATH: str = "/webhook/document-ingested"
     WEBHOOK_TIMEOUT_SECONDS: float = 5.0
+    N8N_API_KEY: str = ""
 settings = Settings()
