@@ -9,6 +9,7 @@ from app.schemas.search import SearchResult
 from app.services.generation.citation_parser import parse_citations
 from app.services.generation.confidence_service import confidence_service
 from app.services.llm.llm_factory import LLMProviderFactory
+from app.services.security.security_scanner import security_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,18 @@ def research_node(state: AgentState) -> AgentState:
             f"Gathered {sum(len(v) for v in evidence_by_angle.values())} raw results "
             f"across {len(angles)} angles, deduplicated to {len(pooled_evidence)} unique chunks"
         )
+
+        # ... inside research_node, after Stage 3 (pooling/deduplication), before Stage 4:
+
+        # Security scan (Step 33) - research_node bypasses answer_service's
+        # chokepoint by design (Step 31's efficiency rationale), so this
+        # gap must be closed explicitly here rather than assumed covered.
+        pooled_evidence, security_flags = security_scanner.scan_chunks(pooled_evidence)
+        if security_flags:
+            logger.warning(
+                f"Research security scan: {len(security_flags)} chunk(s) flagged "
+                f"across {len(angles)} angles"
+            )
 
         if not pooled_evidence:
             # No evidence at all - produce an honest, ungrounded refusal

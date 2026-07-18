@@ -7,6 +7,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.answer import AskResponse, Citation, Confidence, ConfidenceLevel
 from app.services.llm.llm_factory import LLMProviderFactory
 from app.services.vectorstore.qdrant_service import qdrant_service
+from app.services.security.security_scanner import security_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,28 @@ def _summarize_document(document_id: str, filename: str) -> str:
 
     if not chunks:
         return "This document has no extractable content to summarize."
+
+    # --------------------------------------------------
+    # Security scan (Step 33)
+    # --------------------------------------------------
+    safe_chunks = []
+
+    for chunk in chunks:
+        content = chunk.get("content", "")
+        scan = security_scanner.scan_chunk(content)
+
+        if scan["has_injection_risk"]:
+            logger.warning(
+                f"Excluded chunk from summarization of '{filename}' due to prompt injection."
+            )
+            continue
+
+        safe_chunks.append(chunk)
+
+    chunks = safe_chunks
+
+    if not chunks:
+        return "This document's content could not be summarized due to a security concern."
 
     batches = [chunks[i:i + _BATCH_SIZE] for i in range(0, len(chunks), _BATCH_SIZE)]
     logger.info(f"Summarizing '{filename}': {len(chunks)} chunks in {len(batches)} batch(es)")
