@@ -1,0 +1,103 @@
+{
+  "name": "Document Ingestion Auto Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-ingested",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -736,
+        -176
+      ],
+      "id": "d411bdb1-01ac-471a-bf0e-97fbda555294",
+      "name": "Webhook",
+      "webhookId": "28d3f5b9-6b6a-46af-872c-8c663f26696c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/agent/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"Summarize {{$json.body.filename}} for me\",\n  \"limit\": 5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -528,
+        -176
+      ],
+      "id": "1a12bbcc-bba0-4981-a9bb-6a994af48bf4",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "BgZwhOw0fGHOSUiZ",
+          "name": "AKE API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "REPLACE_WITH_YOUR_SLACK_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"📄 New document summarized\\n\\nFilename: {{ $('Webhook').item.json.body.filename }}\\n\\nSummary:\\n{{ $json.result.answer }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -320,
+        -176
+      ],
+      "id": "61f1298d-4a15-4d77-930f-538459578965",
+      "name": "Notify Slack"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "10440288-2614-4cb8-afd2-81a7052cf521",
+  "meta": {
+    "instanceId": "a8b62aff0b6aa4506952805e4bb3b5b1d2614fbd98e04bc755e50f930eab7b5b"
+  },
+  "nodeGroups": [],
+  "id": "zXT6L6uUnVYzkJCF",
+  "tags": []
+}
