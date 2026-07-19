@@ -114,6 +114,7 @@ export default function ChatPage() {
         </h1>
 
         <a href="/documents" className="text-sm text-slate-400 hover:text-white mr-4">Documents</a>
+        <a href="/search" className="text-sm text-slate-400 hover:text-white mr-4">Search</a>
 
         <button
           onClick={logout}
