@@ -1,0 +1,37 @@
+[
+  {
+    "id": "eval_001",
+    "query": "What is the monthly stipend mentioned in the internship offer?",
+    "expected_answer_contains": ["30K", "35K"],
+    "expected_source_filename": "MHK-RGUKTN-INF-2026-27.docx",
+    "category": "qa"
+  },
+  {
+    "id": "eval_002",
+    "query": "What is the bond duration for the internship?",
+    "expected_answer_contains": ["3 Years", "3 years"],
+    "expected_source_filename": "MHK-RGUKTN-INF-2026-27.docx",
+    "category": "qa"
+  },
+  {
+    "id": "eval_003",
+    "query": "What OCR model is used in the system?",
+    "expected_answer_contains": ["PaddleOCR"],
+    "expected_source_filename": "miniproject_final_doc.docx",
+    "category": "qa"
+  },
+  {
+    "id": "eval_004",
+    "query": "What is the capital of France?",
+    "expected_answer_contains": ["don't have enough information", "cannot answer", "no information"],
+    "expected_source_filename": null,
+    "category": "refusal"
+  },
+  {
+    "id": "eval_005",
+    "query": "Compare the stipend and bond duration for the internship",
+    "expected_answer_contains": ["30K", "3 Years"],
+    "expected_source_filename": "MHK-RGUKTN-INF-2026-27.docx",
+    "category": "complex_qa"
+  }
+]
