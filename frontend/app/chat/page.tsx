@@ -113,6 +113,8 @@ export default function ChatPage() {
           AI Enterprise Knowledge Engineer
         </h1>
 
+        <a href="/documents" className="text-sm text-slate-400 hover:text-white mr-4">Documents</a>
+
         <button
           onClick={logout}
           className="text-sm text-slate-400 hover:text-white"
