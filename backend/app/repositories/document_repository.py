@@ -38,3 +38,7 @@ class DocumentRepository:
     def delete(self, document: Document) -> None:
         self.db.delete(document)
         self.db.commit()
+
+    def list_all(self) -> list[Document]:
+        """Admin-only capability - returns every document across all users."""
+        return self.db.query(Document).order_by(Document.created_at.desc()).all()

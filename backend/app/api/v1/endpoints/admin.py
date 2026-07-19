@@ -5,6 +5,8 @@ from app.api.v1.dependencies import get_current_user, require_role
 from app.core.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.user import UserResponse
+from app.repositories.document_repository import DocumentRepository
+from app.schemas.document import DocumentResponse
 
 router = APIRouter()
 
@@ -34,3 +36,11 @@ def deactivate_user(
     db.commit()
     db.refresh(target)
     return target
+
+@router.get("/documents", response_model=list[DocumentResponse])
+def list_all_documents(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Admin-only: list every document in the system, across all users."""
+    return DocumentRepository(db).list_all()
