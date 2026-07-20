@@ -33,5 +33,26 @@
     "expected_answer_contains": ["30K", "3 Years"],
     "expected_source_filename": "MHK-RGUKTN-INF-2026-27.docx",
     "category": "complex_qa"
+  },
+  {
+    "id": "eval_006",
+    "query": "Give me a complete overview of this internship opportunity",
+    "expected_answer_contains": ["stipend", "bond"],
+    "expected_source_filename": "MHK-RGUKTN-INF-2026-27.docx",
+    "category": "research"
+  },
+  {
+    "id": "eval_007",
+    "query": "Summarize MHK-RGUKTN-INF-2026-27.docx for me",
+    "expected_answer_contains": ["stipend", "internship"],
+    "expected_source_filename": null,
+    "category": "summarize"
+  },
+  {
+    "id": "eval_008",
+    "query": "What documents do I have?",
+    "expected_answer_contains": ["docx", "document"],
+    "expected_source_filename": null,
+    "category": "document_search"
   }
 ]

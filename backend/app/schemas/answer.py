@@ -37,3 +37,4 @@ class AskResponse(BaseModel):
     citations: list[Citation]
     sources: list[SearchResult]
     confidence: Confidence
+    validation_warning: str | None = None

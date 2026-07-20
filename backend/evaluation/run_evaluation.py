@@ -1,10 +1,14 @@
 """
-Runs the golden dataset against the live system and reports metrics.
+Runs the golden dataset against the live system and reports metrics,
+broken down BY CATEGORY so a regression in one agent path can't hide
+behind a healthy aggregate average.
 Run with: python evaluation/run_evaluation.py
 """
 
 import json
 import sys
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -21,6 +25,7 @@ from evaluation.metrics import (
 
 TEST_USER_EMAIL = "user@example.com"
 DATASET_PATH = Path(__file__).parent / "golden_dataset.json"
+RESULTS_LOG_PATH = Path(__file__).parent / "results_history.jsonl"
 
 
 def run_evaluation():
@@ -36,7 +41,7 @@ def run_evaluation():
     results = []
 
     for case in dataset:
-        print(f"\nRunning {case['id']}: {case['query']}")
+        print(f"\nRunning {case['id']} ({case['category']}): {case['query']}")
 
         response = answer_service.ask(query=case["query"], limit=5, current_user=user)
 
@@ -62,17 +67,19 @@ def run_evaluation():
         }
         results.append(result)
 
-        print(f"  retrieval_hit={retrieval_hit} contains_expected={contains_expected} "
-              f"faithfulness={faithfulness} relevance={relevance}")
+        flag = "PASS" if contains_expected else "FAIL"
+        print(f"  [{flag}] retrieval_hit={retrieval_hit} faithfulness={faithfulness} relevance={relevance}")
 
     db.close()
     print_summary(results)
+    print_category_breakdown(results)
+    log_results(results)
     return results
 
 
 def print_summary(results: list[dict]):
     print("\n" + "=" * 70)
-    print("EVALUATION SUMMARY")
+    print("OVERALL SUMMARY")
     print("=" * 70)
 
     total = len(results)
@@ -99,10 +106,40 @@ def print_summary(results: list[dict]):
     if avg_relevance is not None:
         print(f"Average relevance (1-5): {avg_relevance:.2f}")
 
-    print("\nPer-case breakdown:")
+
+def print_category_breakdown(results: list[dict]):
+    print("\n" + "=" * 70)
+    print("BREAKDOWN BY CATEGORY (this is what actually matters - a healthy")
+    print("overall average can hide a broken agent path)")
+    print("=" * 70)
+
+    by_category = defaultdict(list)
     for r in results:
-        flag = "PASS" if r["contains_expected"] else "FAIL"
-        print(f"  [{flag}] {r['id']} ({r['category']}) - faithfulness={r['faithfulness']} relevance={r['relevance']}")
+        by_category[r["category"]].append(r)
+
+    for category, cases in by_category.items():
+        pass_rate = sum(1 for c in cases if c["contains_expected"]) / len(cases)
+        avg_faith = sum(c["faithfulness"] for c in cases if c["faithfulness"]) / max(
+            1, sum(1 for c in cases if c["faithfulness"])
+        )
+        status = "OK" if pass_rate >= 0.8 else "NEEDS ATTENTION"
+        print(f"  [{status}] {category}: {pass_rate:.0%} pass rate (n={len(cases)}), avg faithfulness={avg_faith:.1f}")
+
+
+def log_results(results: list[dict]):
+    """
+    Appends this run's results to a persistent history file - the
+    foundation for detecting regressions across time (did a future
+    code change make eval_003 pass, or make a previously-passing case
+    start failing?). One line per run, timestamped.
+    """
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "results": results,
+    }
+    with open(RESULTS_LOG_PATH, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+    print(f"\nResults appended to {RESULTS_LOG_PATH} for future regression comparison.")
 
 
 if __name__ == "__main__":

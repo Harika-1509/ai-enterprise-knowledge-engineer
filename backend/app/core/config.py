@@ -121,4 +121,6 @@ class Settings(BaseSettings):
     N8N_DOCUMENT_INGESTED_WEBHOOK_PATH: str = "/webhook/document-ingested"
     WEBHOOK_TIMEOUT_SECONDS: float = 5.0
     N8N_API_KEY: str = ""
+
+    RESPONSE_VALIDATION_THRESHOLD: int = 3  # faithfulness score below this triggers a warning
 settings = Settings()

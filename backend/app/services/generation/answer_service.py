@@ -11,6 +11,7 @@ from app.services.generation.prompt_builder import build_messages
 from app.services.llm.llm_factory import LLMProviderFactory
 from app.services.search_service import search_service
 from app.services.security.security_scanner import security_scanner
+from app.services.generation.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,15 @@ class AnswerService:
 
         citations = parse_citations(answer, safe_sources)
         confidence = confidence_service.assess(answer, safe_sources, citations)
+        validation_warning = validation_service.validate(answer, safe_sources)
 
         return AskResponse(
-            query=query, answer=answer, citations=citations, sources=safe_sources, confidence=confidence
+            query=query,
+            answer=answer,
+            citations=citations,
+            sources=safe_sources,
+            confidence=confidence,
+            validation_warning=validation_warning,
         )
 
     # ask_stream from Step 26 unchanged for now - confidence scoring for
