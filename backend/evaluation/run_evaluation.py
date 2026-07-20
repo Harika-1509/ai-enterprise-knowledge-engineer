@@ -50,8 +50,9 @@ def run_evaluation():
             "limit": 5, 
         }
         final_state = agent_graph.invoke(initial_state)
-        response = final_state.get("result")
         
+        response = final_state.get("result")
+
         if response is None:
             print(f"  [ERROR] Agent produced no result: {final_state.get('error')}")
             continue

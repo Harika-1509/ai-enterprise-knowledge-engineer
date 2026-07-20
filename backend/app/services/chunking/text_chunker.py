@@ -89,17 +89,28 @@ class TextChunker:
     def _add_overlap(self, pieces: list[str]) -> list[str]:
         """
         Prepends the tail of the previous chunk to each chunk (except the
-        first), so context isn't abruptly lost at chunk boundaries.
+        first), while ensuring the final chunk never exceeds max_tokens.
         """
         if self.overlap_tokens <= 0 or len(pieces) <= 1:
             return pieces
 
         overlapped = [pieces[0]]
+
         for i in range(1, len(pieces)):
             prev_tokens = _ENCODER.encode(pieces[i - 1])
-            overlap_slice = prev_tokens[-self.overlap_tokens :]
-            overlap_text = _ENCODER.decode(overlap_slice)
-            overlapped.append(overlap_text + pieces[i])
+            curr_tokens = _ENCODER.encode(pieces[i])
+
+            overlap = prev_tokens[-self.overlap_tokens:]
+
+            # Reserve room for overlap
+            available = self.max_tokens - len(overlap)
+
+            if len(curr_tokens) > available:
+                curr_tokens = curr_tokens[:available]
+
+            combined = overlap + curr_tokens
+            overlapped.append(_ENCODER.decode(combined))
+
         return overlapped
 
     def split(self, extracted_chunk: ExtractedChunk) -> list[TextChunk]:
