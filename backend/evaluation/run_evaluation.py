@@ -22,6 +22,7 @@ from evaluation.metrics import (
     score_faithfulness,
     score_relevance,
 )
+from app.agents.graph import agent_graph
 
 TEST_USER_EMAIL = "user@example.com"
 DATASET_PATH = Path(__file__).parent / "golden_dataset.json"
@@ -43,7 +44,20 @@ def run_evaluation():
     for case in dataset:
         print(f"\nRunning {case['id']} ({case['category']}): {case['query']}")
 
-        response = answer_service.ask(query=case["query"], limit=5, current_user=user)
+        initial_state = {
+            "query": case["query"],
+            "user_id": user.id,
+            "limit": 5,
+        }
+        final_state = agent_graph.invoke(initial_state)
+        response = final_state.get("result")
+
+        if response is None:
+            print(f"  [ERROR] Agent produced no result: {final_state.get('error')}")
+            continue
+
+        actual_intent = final_state.get("intent")
+        print(f"  (routed as intent='{actual_intent}')")
 
         retrieval_hit = check_retrieval_hit(
             [s.filename for s in response.sources], case.get("expected_source_filename")
