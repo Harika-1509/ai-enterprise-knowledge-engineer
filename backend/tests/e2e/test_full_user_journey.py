@@ -50,6 +50,7 @@ def test_full_journey_register_login_upload_ask(unique_user):
 
     # ---- Step 3: Confirm authenticated identity ----
     me_response = client.get("/api/v1/auth/me", headers=headers)
+
     assert me_response.status_code == 200
     assert me_response.json()["email"] == unique_user["email"]
 
@@ -77,18 +78,25 @@ def test_full_journey_register_login_upload_ask(unique_user):
     assert upload_response.status_code == 201, upload_response.text
 
     document_id = upload_response.json()["id"]
+
     assert upload_response.json()["status"] == "pending"
 
-    # ---- Step 5: Wait for background ingestion ----
+    # ---- Step 5: Wait for ingestion ----
     max_wait_seconds = 15
     poll_interval = 1
+
     status = "pending"
 
     for _ in range(max_wait_seconds):
-        docs_response = client.get("/api/v1/documents/", headers=headers)
+
+        docs_response = client.get(
+            "/api/v1/documents/",
+            headers=headers,
+        )
 
         matching = [
-            d for d in docs_response.json()
+            d
+            for d in docs_response.json()
             if d["id"] == document_id
         ]
 
@@ -101,10 +109,12 @@ def test_full_journey_register_login_upload_ask(unique_user):
         time.sleep(poll_interval)
 
     assert status == "completed", (
-        f"Ingestion did not complete in time, final status: {status}"
+        f"Ingestion did not complete in time, "
+        f"final status: {status}"
     )
 
-    # ---- Step 6: Ask a question ----
+    # ---- Step 6: Ask question ----
+
     ask_response = client.post(
         "/api/v1/ask/",
         headers=headers,
@@ -119,25 +129,30 @@ def test_full_journey_register_login_upload_ask(unique_user):
     body = ask_response.json()
 
     assert "3" in body["answer"], (
-        f"Expected the correct fact in the answer, got: {body['answer']}"
+        f"Expected correct fact, got: {body['answer']}"
     )
-    assert len(body["citations"]) > 0
+
+    assert len(body["citations"]) > 0, (
+        "Expected at least one citation"
+    )
+
     assert body["citations"][0]["filename"] == "handbook.txt"
 
-    # ---- Step 7: Verify access control ----
+
+    # ---- Step 7: Security check ----
+
     other_user_suffix = uuid.uuid4().hex[:8]
 
     other_user = {
-        "email": f"e2e_other_{other_user_suffix}@example.com",   # <-- FIXED
+        "email": f"e2e_other_{other_user_suffix}@example.com",
         "password": "OtherPassword123",
         "full_name": "Other E2E User",
     }
 
-    register_other = client.post(
+    client.post(
         "/api/v1/auth/register",
         json=other_user,
     )
-    assert register_other.status_code == 201, register_other.text   # <-- ADDED
 
     other_login = client.post(
         "/api/v1/auth/login",
@@ -147,11 +162,12 @@ def test_full_journey_register_login_upload_ask(unique_user):
         },
     )
 
-    assert other_login.status_code == 200, other_login.text
-
     other_headers = {
-        "Authorization": f"Bearer {other_login.json()['access_token']}"
+        "Authorization": (
+            f"Bearer {other_login.json()['access_token']}"
+        )
     }
+
 
     other_ask_response = client.post(
         "/api/v1/ask/",
@@ -167,11 +183,13 @@ def test_full_journey_register_login_upload_ask(unique_user):
     other_body = other_ask_response.json()
 
     assert len(other_body["citations"]) == 0, (
-        "SECURITY REGRESSION: second user received citations "
-        "from the first user's private document"
+        "SECURITY REGRESSION: second user received "
+        "citations from first user's private document"
     )
 
+
     # ---- Cleanup ----
+
     client.delete(
         f"/api/v1/documents/{document_id}",
         headers=headers,
