@@ -32,8 +32,8 @@ COPY . .
 
 # Offline mode for HuggingFace models (Step 14's fix) - baked into the
 # image build so it applies from container start, not just app runtime
-ENV HF_HUB_OFFLINE=1
-ENV TRANSFORMERS_OFFLINE=1
+#ENV HF_HUB_OFFLINE=1
+#ENV TRANSFORMERS_OFFLINE=1
 
 EXPOSE 8000
 

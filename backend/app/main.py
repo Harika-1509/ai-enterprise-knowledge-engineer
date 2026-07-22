@@ -1,7 +1,7 @@
 import os
 
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
+#os.environ["HF_HUB_OFFLINE"] = "1"
+#clearos.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import logging
 from contextlib import asynccontextmanager
@@ -44,7 +44,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
