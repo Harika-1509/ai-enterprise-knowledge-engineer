@@ -22,9 +22,19 @@ SPARSE_VECTOR_NAME = "sparse"
 
 class QdrantService:
     def __init__(self):
-        self.client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+        if settings.QDRANT_URL:
+            self.client = QdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY or None,
+            )
+        else:
+            self.client = QdrantClient(
+                host=settings.QDRANT_HOST,
+                port=settings.QDRANT_PORT,
+            )
         self.collection_name = settings.QDRANT_COLLECTION_NAME
         self._ensure_collection()
+
 
     def _ensure_collection(self) -> None:
         existing_collections = [c.name for c in self.client.get_collections().collections]

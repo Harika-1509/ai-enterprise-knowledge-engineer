@@ -23,10 +23,13 @@ class Settings(BaseSettings):
     # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_URL: str = "redis://default:gQAAAAAAAtWuAAIgcDI2NTE5ZWQ3MzMxMTE0MjZmYjU5MmNkYTJlMGMyNDAzNQ@climbing-locust-185774.upstash.io:6379"
 
     # Qdrant
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
+    QDRANT_URL: str = "https://0f9c46ff-3850-419d-826f-86048f9ed208.eu-west-2-0.aws.cloud.qdrant.io"  # set for cloud; leave empty to use QDRANT_HOST/PORT locally
+    QDRANT_API_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6ZGVlZjQwMGMtZjlmNS00YTFiLWJkZDQtMGZhOTg3YjM2ZDEwIn0.TSdxaoLZ2kIWJeidGe1DYitDuy8GUoKlYjkNNun4tpA"
 
     @property
     def DATABASE_URL(self) -> str:
