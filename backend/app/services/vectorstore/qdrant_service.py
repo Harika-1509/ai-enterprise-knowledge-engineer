@@ -37,24 +37,35 @@ class QdrantService:
 
 
     def _ensure_collection(self) -> None:
-        existing_collections = [c.name for c in self.client.get_collections().collections]
+        existing_collections = [
+            c.name for c in self.client.get_collections().collections
+        ]
 
-        if self.collection_name in existing_collections:
-            logger.info(f"Qdrant collection '{self.collection_name}' already exists.")
-            return
+        if self.collection_name not in existing_collections:
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config={
+                    DENSE_VECTOR_NAME: VectorParams(
+                        size=settings.EMBEDDING_DIMENSION,
+                        distance=Distance.COSINE
+                    )
+                },
+                sparse_vectors_config={
+                    SPARSE_VECTOR_NAME: SparseVectorParams()
+                },
+            )
 
-        self.client.create_collection(
+        # Create indexes required for filters
+        self.client.create_payload_index(
             collection_name=self.collection_name,
-            vectors_config={
-                DENSE_VECTOR_NAME: VectorParams(
-                    size=settings.EMBEDDING_DIMENSION, distance=Distance.COSINE
-                )
-            },
-            sparse_vectors_config={SPARSE_VECTOR_NAME: SparseVectorParams()},
+            field_name="owner_id",
+            field_schema="keyword",
         )
-        logger.info(
-            f"Created Qdrant collection '{self.collection_name}' with named "
-            f"dense ('{DENSE_VECTOR_NAME}') and sparse ('{SPARSE_VECTOR_NAME}') vectors."
+
+        self.client.create_payload_index(
+            collection_name=self.collection_name,
+            field_name="document_id",
+            field_schema="keyword",
         )
 
     def upsert_points(self, points: list[PointStruct]) -> None:
