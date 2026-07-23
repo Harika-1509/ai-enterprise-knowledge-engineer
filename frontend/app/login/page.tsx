@@ -49,6 +49,20 @@ export default function LoginPage() {
           required
           className="mb-4 w-full rounded border border-slate-700 bg-slate-800 p-2 text-white"
         />
+
+        <button
+          type="button"
+          onClick={() => {
+            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google/login`;
+
+            window.location.href = url;
+          }}
+          className="mt-4 w-full rounded border border-slate-600 p-2 mb-4 font-medium text-white hover:bg-slate-800"
+        >
+          Sign in with Google
+        </button>
+
+
         {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
         <button
           type="submit"
@@ -57,6 +71,7 @@ export default function LoginPage() {
         >
           {submitting ? "Signing in..." : "Sign in"}
         </button>
+
         <p className="mt-4 text-center text-sm text-slate-400">
           No account? <a href="/register" className="text-blue-400 hover:underline">Register</a>
         </p>

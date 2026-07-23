@@ -1,7 +1,8 @@
+print("LOADED MAIN.PY")
 import os
 
-#os.environ["HF_HUB_OFFLINE"] = "1"
-#clearos.environ["TRANSFORMERS_OFFLINE"] = "1"
+# os.environ["HF_HUB_OFFLINE"] = "1"
+# os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import logging
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 
 logging.basicConfig(
@@ -19,19 +21,23 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
     from app.services.embedding.embedding_service import embedding_service  # noqa: F401
     from app.services.vectorstore.qdrant_service import qdrant_service  # noqa: F401
     from app.services.reranking.reranker_service import reranker_service  # noqa: F401
+
     logger.info("All startup models and services loaded.")
 
     yield
 
     logger.info("Application shutting down.")
+
 
 
 app = FastAPI(
@@ -42,16 +48,37 @@ app = FastAPI(
 )
 
 
+
+# Required for Authlib OAuth flow
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.JWT_SECRET_KEY
+)
+
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+
+
+app.include_router(
+    api_router,
+    prefix=settings.API_V1_PREFIX
+)
+
 
 
 @app.get("/")
 def root():
-    return {"message": f"{settings.APP_NAME} API is running"}
+    return {
+        "message": f"{settings.APP_NAME} API is running"
+    }
