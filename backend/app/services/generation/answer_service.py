@@ -12,7 +12,8 @@ from app.services.llm.llm_factory import LLMProviderFactory
 from app.services.search_service import search_service
 from app.services.security.security_scanner import security_scanner
 from app.services.generation.validation_service import validation_service
-
+from functools import lru_cache
+import hashlib
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +22,8 @@ class AnswerService:
         self.provider = LLMProviderFactory.get_provider(task="quality")
 
     def ask(self, query: str, limit: int, current_user: User) -> AskResponse:
+        _response_cache: dict[str, "AskResponse"] = {}
+
         sources = search_service.search_for_llm_context(
             query=query, limit=limit, current_user=current_user
         )
@@ -99,10 +102,15 @@ class AnswerService:
         yield _sse_event({"type": "citations", "citations": citations_payload})
         yield _sse_event({"type": "done"})
 
+    def _cache_key(query: str, user_id: str) -> str:
+        return hashlib.md5(f"{query}:{user_id}".encode()).hexdigest()
+
 
 def _sse_event(data: dict) -> str:
     """Formats a dict as a proper SSE 'data: ...' line."""
     return f"data: {json.dumps(data)}\n\n"
+
+
 
 
 answer_service = AnswerService()
